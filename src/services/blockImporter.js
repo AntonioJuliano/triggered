@@ -55,7 +55,7 @@ async function importBlock(blockNumber) {
     });
 
     await producerService.produce(
-      producerService.producers.transaction,
+      producerService.queues.transaction,
       block.transactions,
       tx => tx.hash
     );
