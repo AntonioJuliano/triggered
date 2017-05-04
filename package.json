@@ -1,0 +1,44 @@
+{
+  "name": "triggered",
+  "version": "1.0.0",
+  "description": "Microservice to enqueue async tasks",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --ext .js --ignore-path .gitignore server/**",
+    "prod_install": "npm install --loglevel warn --production",
+    "start": "node src/server.js",
+    "prod": "NODE_ENV=production node src/server.js"
+  },
+  "pre-commit": [
+    "lint"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntonioJuliano/triggered.git"
+  },
+  "author": "Antonio Juliano",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AntonioJuliano/triggered/issues"
+  },
+  "homepage": "https://github.com/AntonioJuliano/triggered#readme",
+  "dependencies": {
+    "@risingstack/trace": "^3.6.2",
+    "bluebird": "latest",
+    "bugsnag": "^1.10.0",
+    "dotenv": "^4.0.0",
+    "express": "^4.15.2",
+    "redis": "^2.7.1",
+    "sqs-producer": "^1.5.0",
+    "web3": "^0.18.2",
+    "winston": "^2.3.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^7.2.1",
+    "eslint": "^3.18.0",
+    "mocha": "^3.2.0",
+    "npm": "^4.1.2",
+    "pre-commit": "^1.2.2"
+  }
+}
