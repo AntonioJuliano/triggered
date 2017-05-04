@@ -4,9 +4,10 @@ RUN apk update && apk upgrade && \
     apk add --no-cache git
 
 WORKDIR /home/weipoint/app
+COPY package.json /home/weipoint/app/package.json
 RUN npm run prod_install
 
-COPY ./server /home/weipoint/app/server
+COPY ./src /home/weipoint/app/src
 
 EXPOSE 3007
 
