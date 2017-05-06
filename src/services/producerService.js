@@ -89,7 +89,7 @@ async function produce(queue, items, getMessageId) {
     batches.push(items.slice(i, Math.min(i + BATCH_SIZE, items.length)));
   }
 
-  await batches.map( b => _sendBatch(b, queue, getMessageId, 0));
+  await Promise.all(batches.map( b => _sendBatch(b, queue, getMessageId, 0)));
 }
 
 module.exports.queues = queues;

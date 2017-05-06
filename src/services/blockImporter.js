@@ -4,6 +4,7 @@ const logger = require('../helpers/logger');
 const producerService = require('./producerService');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
+const IMPORT_BATCH_SIZE = process.env.BLOCK_IMPORT_BATCH_SIZE;
 
 // This assumes there is only one instance of triggered running at a time
 // If we ever want more, we need some sort of locking or parallelization
@@ -12,7 +13,7 @@ async function startImport() {
   try {
     const redisBlockNumber = await redis.getAsync(BLOCK_NUMBER_KEY);
 
-    const blockNumber = redisBlockNumber ? parseInt(redisBlockNumber, 10) : 0;
+    const blockNumber = redisBlockNumber ? parseInt(redisBlockNumber, 10) : process.env.START_BLOCK;
 
     logger.info({
       at: 'blockImporter#startImport',
@@ -20,7 +21,7 @@ async function startImport() {
       blockNumber: blockNumber
     });
 
-    importBlock(blockNumber);
+    _batchImportBlocks(blockNumber, IMPORT_BATCH_SIZE);
   } catch (e) {
     logger.error({
       at: 'blockImporter#startImport',
@@ -31,24 +32,51 @@ async function startImport() {
   }
 }
 
-async function importBlock(blockNumber) {
+/**
+ * Import a batch of blocks starting at a block number. It is possible this
+ * could fail in a state where only some of the blocks are imported, which
+ * could cause blocks to be imported twice. This is currently fine, but should
+ * be known in the future
+ *
+ * @param  {Number} startBlockNumber block number to start the import (inclusive)
+ * @param  {Number} numBlocks        number of blocks to include in the batch
+ * @return {Promise}                 Promise indicating succcess or failure
+ */
+async function _batchImportBlocks(startBlockNumber, numBlocks) {
+  try {
+    await redis.setAsync(BLOCK_NUMBER_KEY, startBlockNumber);
+    // An array [0...numBlocks]
+    const offsets = Array.from(Array(numBlocks).keys());
+    await Promise.all(offsets.map( i => _importBlock(startBlockNumber + i)));
+    _batchImportBlocks(startBlockNumber + numBlocks, numBlocks);
+  } catch (e) {
+    logger.error({
+      at: 'blockImporter#_batchImportBlocks',
+      message: 'Batch importing blocks failed',
+      startBlockNumber: startBlockNumber,
+      error: e.toString()
+    });
+    setTimeout( () => _batchImportBlocks(startBlockNumber, numBlocks), 1000);
+  }
+}
+
+async function _importBlock(blockNumber) {
   try {
     logger.info({
-      at: 'blockImporter#importBlock',
+      at: 'blockImporter#_importBlock',
       message: 'Fetching block',
       blockNumber: blockNumber
     });
-    await redis.setAsync(BLOCK_NUMBER_KEY, blockNumber);
 
     const block = await web3.eth.getBlockAsync(blockNumber, true);
 
     if (block === null) {
-      setTimeout( () => importBlock(blockNumber), 5000);
+      setTimeout( () => _importBlock(blockNumber), 5000);
       return;
     }
 
     logger.info({
-      at: 'blockImporter#importBlock',
+      at: 'blockImporter#_importBlock',
       message: 'Importing block',
       blockNumber: blockNumber,
       numTransactions: block.transactions.length
@@ -59,16 +87,14 @@ async function importBlock(blockNumber) {
       block.transactions,
       tx => tx.hash
     );
-
-    importBlock(blockNumber + 1);
   } catch (e) {
     logger.error({
-      at: 'blockImporter#importBlock',
+      at: 'blockImporter#_importBlock',
       message: 'Importing block failed',
       blockNumber: blockNumber,
       error: e.toString()
     });
-    setTimeout( () => importBlock(blockNumber), 1000);
+    setTimeout( () => _importBlock(blockNumber), 1000);
   }
 }
 

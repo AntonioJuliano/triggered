@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint --ext .js --ignore-path .gitignore server/**",
+    "lint": "eslint --ext .js --ignore-path .gitignore src/**",
     "prod_install": "npm install --loglevel warn --production",
     "start": "node src/server.js",
     "prod": "NODE_ENV=production node src/server.js"
@@ -37,7 +37,6 @@
   "devDependencies": {
     "babel-eslint": "^7.2.1",
     "eslint": "^3.18.0",
-    "mocha": "^3.2.0",
     "npm": "^4.1.2",
     "pre-commit": "^1.2.2"
   }
