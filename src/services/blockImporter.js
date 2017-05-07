@@ -4,7 +4,7 @@ const logger = require('../helpers/logger');
 const producerService = require('./producerService');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
-const IMPORT_BATCH_SIZE = process.env.BLOCK_IMPORT_BATCH_SIZE;
+const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
 
 // This assumes there is only one instance of triggered running at a time
 // If we ever want more, we need some sort of locking or parallelization
@@ -13,7 +13,9 @@ async function startImport() {
   try {
     const redisBlockNumber = await redis.getAsync(BLOCK_NUMBER_KEY);
 
-    const blockNumber = redisBlockNumber ? parseInt(redisBlockNumber, 10) : process.env.START_BLOCK;
+    const blockNumber = redisBlockNumber ?
+      parseInt(redisBlockNumber, 10) :
+      parseInt(process.env.START_BLOCK);
 
     logger.info({
       at: 'blockImporter#startImport',
@@ -48,7 +50,7 @@ async function _batchImportBlocks(startBlockNumber, numBlocks) {
     // An array [0...numBlocks]
     const offsets = Array.from(Array(numBlocks).keys());
     await Promise.all(offsets.map( i => _importBlock(startBlockNumber + i)));
-    _batchImportBlocks(startBlockNumber + numBlocks, numBlocks);
+    setTimeout( () => _batchImportBlocks(startBlockNumber + numBlocks, numBlocks), 1000);
   } catch (e) {
     logger.error({
       at: 'blockImporter#_batchImportBlocks',

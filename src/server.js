@@ -7,13 +7,13 @@ dotenv.load();
 const express = require('express');
 const logger = require('./helpers/logger');
 const bugsnag = require('./helpers/bugsnag');
+require('./lib/clock'); // Needed to start cron tasks
 const blockImporter = require('./services/blockImporter');
 
 const port = process.env.PORT;
 const app = express();
 
 blockImporter.startImport();
-
 app.listen(port, error => {
   if (error) {
     logger.error({
