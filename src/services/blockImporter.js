@@ -2,6 +2,7 @@ const web3 = require('../helpers/web3');
 const redis = require('../helpers/redis');
 const logger = require('../helpers/logger');
 const producerService = require('./producerService');
+const delay = require('../helpers/delay');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
 const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
@@ -15,7 +16,7 @@ async function startImport() {
 
     const blockNumber = redisBlockNumber ?
       parseInt(redisBlockNumber, 10) :
-      parseInt(process.env.START_BLOCK);
+      parseInt(process.env.START_BLOCK, 10);
 
     logger.info({
       at: 'blockImporter#startImport',
@@ -64,17 +65,10 @@ async function _batchImportBlocks(startBlockNumber, numBlocks) {
 
 async function _importBlock(blockNumber) {
   try {
-    logger.info({
-      at: 'blockImporter#_importBlock',
-      message: 'Fetching block',
-      blockNumber: blockNumber
-    });
-
     const block = await web3.eth.getBlockAsync(blockNumber, true);
 
     if (block === null) {
-      setTimeout( () => _importBlock(blockNumber), 5000);
-      return;
+      return delay(5000).then(() => _importBlock(blockNumber));
     }
 
     logger.info({
@@ -96,7 +90,7 @@ async function _importBlock(blockNumber) {
       blockNumber: blockNumber,
       error: e.toString()
     });
-    setTimeout( () => _importBlock(blockNumber), 1000);
+    return delay(1000).then(() => _importBlock(blockNumber));
   }
 }
 
