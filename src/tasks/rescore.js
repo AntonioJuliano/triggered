@@ -21,7 +21,8 @@ async function rescoreAll() {
     // which shoudl be always increasing
     const now = new Date();
     const runStr = `${now.getUTCFullYear()}${now.getUTCMonth() + 1 < 10 ? 0 : ''}`
-                    + `${now.getMonth() + 1}${now.getUTCDate() < 10 ? 0: ''}${now.getUTCDate()}`;
+                    + `${now.getMonth() + 1}${now.getUTCDate() < 10 ? 0: ''}${now.getUTCDate()}`
+                    + '02';
     const runId = parseInt(runStr, 10);
 
     const total = await _rescoreBatches(cursor, runId);
