@@ -83,7 +83,7 @@ async function _sendBatch(batch, queue, getMessageId, i) {
       error: e.toString()
     });
 
-    return delay(RETRY_TIMEOUT).then(_sendBatch(batch, queue, getMessageId, i + 1));
+    return delay(RETRY_TIMEOUT).then(() => _sendBatch(batch, queue, getMessageId, i + 1));
   }
 
   if (sendResult.Failed && sendResult.Failed.length > 0) {
@@ -104,7 +104,7 @@ async function _sendBatch(batch, queue, getMessageId, i) {
       failureMessages: sendResult.Failed.map( r => r.Message)
     });
 
-    return delay(RETRY_TIMEOUT).then(_sendBatch(failedItems, queue, getMessageId, i + 1));
+    return delay(RETRY_TIMEOUT).then(() => _sendBatch(failedItems, queue, getMessageId, i + 1));
   }
 }
 

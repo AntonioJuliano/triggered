@@ -8,7 +8,9 @@
     "lint": "eslint --ext .js --ignore-path .gitignore src/**",
     "prod_install": "npm install --loglevel warn --production",
     "start": "node src/server.js",
-    "prod": "NODE_ENV=production node src/server.js"
+    "prod": "NODE_ENV=production node src/server.js",
+    "prod_console": "NODE_ENV=production node src/scripts/console.js",
+    "console": "NODE_ENV=development node src/scripts/console.js"
   },
   "pre-commit": [
     "lint"
