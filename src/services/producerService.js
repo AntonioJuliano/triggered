@@ -21,14 +21,14 @@ const queues = {
     name: 'transaction',
     url: process.env.TRANSACTION_QUEUE_URL
   },
-  tasks: {
+  task: {
     sqs: sqs.createSqsQueue({
-      region: process.env.TASKS_QUEUE_REGION,
-      accessKeyId: process.env.TASKS_QUEUE_ID,
-      secretAccessKey: process.env.TASKS_QUEUE_KEY
+      region: process.env.TASK_QUEUE_REGION,
+      accessKeyId: process.env.TASK_QUEUE_ID,
+      secretAccessKey: process.env.TASK_QUEUE_KEY
     }),
-    name: 'tasks',
-    url: process.env.TASKS_QUEUE_URL
+    name: 'task',
+    url: process.env.TASK_QUEUE_URL
   }
 };
 

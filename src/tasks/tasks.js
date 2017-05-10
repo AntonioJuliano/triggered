@@ -20,7 +20,7 @@ const types = {
  */
 function batchSchedule(type, argsArray, getId) {
   return producerService.produce(
-    producerService.queues.tasks,
+    producerService.queues.task,
     argsArray.map( args => {
       return {
         type: type,
@@ -43,7 +43,7 @@ function batchSchedule(type, argsArray, getId) {
  */
 function schedule(type, args, id) {
   return producerService.produce(
-    producerService.queues.tasks,
+    producerService.queues.task,
     [{
       type: type,
       args: args
