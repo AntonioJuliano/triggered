@@ -6,7 +6,7 @@ const tasks = require('./tasks');
 const BATCH_SIZE = 10;
 const MAX_BATCH_RETRIES = 3;
 
-async function rescoreAll() {
+async function rescoreAll(force) {
   try {
     logger.info({
       at: 'rescore#rescoreAll',
@@ -25,7 +25,7 @@ async function rescoreAll() {
                     + '02';
     const runId = parseInt(runStr, 10);
 
-    const total = await _rescoreBatches(cursor, runId);
+    const total = await _rescoreBatches(cursor, runId, force);
 
     logger.info({
       at: 'rescore#rescoreAll',
@@ -42,7 +42,7 @@ async function rescoreAll() {
   }
 }
 
-async function _rescoreBatches(cursor, runId) {
+async function _rescoreBatches(cursor, runId, force) {
   let count = 0;
   let addresses = [];
   try {
@@ -51,7 +51,7 @@ async function _rescoreBatches(cursor, runId) {
       count++;
 
       if (addresses.length >= BATCH_SIZE) {
-        _rescoreBatch(addresses, runId).catch( e => {
+        _rescoreBatch(addresses, runId, force).catch( e => {
           logger.error({
             at: 'contractTasks#_rescore',
             message: 'Rescoring contract batch failed',
@@ -71,11 +71,11 @@ async function _rescoreBatches(cursor, runId) {
       addresses: addresses
     });
 
-    return delay(1000).then(() => _rescoreBatches(cursor, runId));
+    return delay(1000).then(() => _rescoreBatches(cursor, runId, force));
   }
 
   if (addresses.length > 0) {
-    _rescoreBatch(addresses, runId).catch( e => {
+    _rescoreBatch(addresses, runId, force).catch( e => {
       logger.error({
         at: 'contractTasks#_rescore',
         message: 'Rescoring contract batch failed',
@@ -88,7 +88,7 @@ async function _rescoreBatches(cursor, runId) {
   return count;
 }
 
-async function _rescoreBatch(addresses, runId, attempts) {
+async function _rescoreBatch(addresses, runId, force, attempts) {
   attempts = attempts ? attempts : 0;
 
   if (attempts >= MAX_BATCH_RETRIES) {
@@ -102,7 +102,8 @@ async function _rescoreBatch(addresses, runId, attempts) {
         return {
           address: a,
           type: 'contract',
-          runId: runId
+          runId: runId,
+          force: force
         };
       }),
       args => args.address + '-' + args.runId
@@ -115,7 +116,7 @@ async function _rescoreBatch(addresses, runId, attempts) {
       addresses: addresses
     });
 
-    return delay(1000).then(_rescoreBatch(addresses, runId, attempts + 1));
+    return delay(1000).then(_rescoreBatch(addresses, runId, force, attempts + 1));
   }
 }
 
