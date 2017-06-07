@@ -2,6 +2,7 @@ const Contract = require('../models/contract');
 const logger = require('../helpers/logger');
 const delay = require('../helpers/delay');
 const tasks = require('./tasks');
+const bugsnag = require('../helpers/bugsnag');
 
 const BATCH_SIZE = 10;
 const MAX_BATCH_RETRIES = 3;
@@ -38,7 +39,8 @@ async function rescoreAll(force) {
       at: 'rescore#rescoreAll',
       message: 'Error thrown while initiating rescoring',
       error: e.toString()
-    })
+    });
+    bugsnag.notify(e);
   }
 }
 

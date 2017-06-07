@@ -3,6 +3,7 @@ const redis = require('../helpers/redis');
 const logger = require('../helpers/logger');
 const producerService = require('./producerService');
 const delay = require('../helpers/delay');
+const bugsnag = require('../helpers/bugsnag');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
 const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
@@ -31,6 +32,7 @@ async function startImport() {
       message: 'Starting import failed',
       error: e.toString()
     });
+    bugsnag.notify(e);
     setTimeout(startImport, 1000);
   }
 }
@@ -59,6 +61,7 @@ async function _batchImportBlocks(startBlockNumber, numBlocks) {
       startBlockNumber: startBlockNumber,
       error: e.toString()
     });
+    bugsnag.notify(e);
     setTimeout( () => _batchImportBlocks(startBlockNumber, numBlocks), 1000);
   }
 }
