@@ -29,12 +29,6 @@ const txImports = [
     doNotCount: true,
     stop: async (blockNumber) => {
       const defaultBlockNumber = parseInt(await redis.getAsync(BLOCK_NUMBER_KEY));
-      logger.info({
-        at: 'debug-1',
-        defaultBlockNumber: defaultBlockNumber,
-        blockNumber: blockNumber,
-        return: (blockNumber >= defaultBlockNumber)
-      });
       return (blockNumber >= defaultBlockNumber);
     },
     nextBatchTimeout: 10
@@ -86,7 +80,7 @@ async function _startImport(txImport) {
  */
 async function _batchImportBlocks(startBlockNumber, txImport) {
   try {
-    await redis.setAsync(BLOCK_NUMBER_KEY, startBlockNumber);
+    await redis.setAsync(txImport.blockNumberKey, startBlockNumber);
     // An array [0...numBlocks]
     const offsets = Array.from(Array(txImport.batchSize).keys());
     await Promise.all(offsets.map( i => _importBlock(startBlockNumber + i, txImport)));
