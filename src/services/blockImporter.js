@@ -9,8 +9,8 @@ const BLOCK_NUMBER_KEY = 'triggered/block_number';
 const BACKFILL_BLOCK_NUMBER_KEY = 'triggered/backfill_block_number';
 const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
 
-const txImports = {
-  default: {
+const txImports = [
+  {
     name: 'default',
     blockNumberKey: BLOCK_NUMBER_KEY,
     defaultStartBlock: parseInt(process.env.START_BLOCK, 10),
@@ -20,7 +20,7 @@ const txImports = {
     stop: () => false,
     nextBatchTimeout: 1000
   },
-  contractCreationBackfill: {
+  {
     name: 'contract_creation_backfill',
     blockNumberKey: BACKFILL_BLOCK_NUMBER_KEY,
     defaultStartBlock: parseInt(process.env.BACKFILL_START_BLOCK, 10),
@@ -33,7 +33,7 @@ const txImports = {
     },
     nextBatchTimeout: 10
   }
-}
+]
 
 function initialize() {
   txImports.forEach( i => _startImport(i));
@@ -84,6 +84,17 @@ async function _batchImportBlocks(startBlockNumber, txImport) {
     // An array [0...numBlocks]
     const offsets = Array.from(Array(txImport.batchSize).keys());
     await Promise.all(offsets.map( i => _importBlock(startBlockNumber + i, txImport)));
+
+    if (await txImport.stop(startBlockNumber + txImport.batchSize)) {
+      logger.info({
+        at: 'blockImporter#_batchImportBlocks',
+        message: 'Finished block import',
+        name: txImport.name,
+        blockNumber: startBlockNumber + txImport.batchSize
+      });
+      return;
+    }
+
     setTimeout(
       () => _batchImportBlocks(startBlockNumber + txImport.batchSize, txImport),
       txImport.nextBatchTimeout
