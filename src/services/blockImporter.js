@@ -6,26 +6,57 @@ const delay = require('../helpers/delay');
 const bugsnag = require('../helpers/bugsnag');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
+const BACKFILL_BLOCK_NUMBER_KEY = 'triggered/backfill_block_number';
 const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
+
+const txImports = [
+  {
+    name: 'default',
+    blockNumberKey: BLOCK_NUMBER_KEY,
+    defaultStartBlock: parseInt(process.env.START_BLOCK, 10),
+    batchSize: IMPORT_BATCH_SIZE,
+    acceptFunc: () => true,
+    doNotCount: false,
+    stop: () => false,
+    nextBatchTimeout: 1000
+  },
+  {
+    name: 'contract_creation_backfill',
+    blockNumberKey: BACKFILL_BLOCK_NUMBER_KEY,
+    defaultStartBlock: parseInt(process.env.BACKFILL_START_BLOCK, 10),
+    batchSize: IMPORT_BATCH_SIZE,
+    acceptFunc: tx => tx.to === null,
+    doNotCount: true,
+    stop: async (blockNumber) => {
+      const defaultBlockNumber = await redis.getAsync(BLOCK_NUMBER_KEY);
+      return (blockNumber >= defaultBlockNumber);
+    },
+    nextBatchTimeout: 10
+  }
+]
+
+function initialize() {
+  txImports.forEach( i => _startImport(i));
+}
 
 // This assumes there is only one instance of triggered running at a time
 // If we ever want more, we need some sort of locking or parallelization
-
-async function startImport() {
+async function _startImport(txImport) {
   try {
-    const redisBlockNumber = await redis.getAsync(BLOCK_NUMBER_KEY);
+    const redisBlockNumber = await redis.getAsync(txImport.blockNumberKey);
 
     const blockNumber = redisBlockNumber ?
       parseInt(redisBlockNumber, 10) :
-      parseInt(process.env.START_BLOCK, 10);
+      txImport.defaultStartBlock;
 
     logger.info({
       at: 'blockImporter#startImport',
       message: 'Starting block import',
-      blockNumber: blockNumber
+      blockNumber: blockNumber,
+      name: txImport.name
     });
 
-    _batchImportBlocks(blockNumber, IMPORT_BATCH_SIZE);
+    _batchImportBlocks(blockNumber, txImport);
   } catch (e) {
     logger.error({
       at: 'blockImporter#startImport',
@@ -33,7 +64,7 @@ async function startImport() {
       error: e.toString()
     });
     bugsnag.notify(e);
-    setTimeout(startImport, 1000);
+    setTimeout(() => _startImport(txImport), 1000);
   }
 }
 
@@ -44,34 +75,51 @@ async function startImport() {
  * be known in the future
  *
  * @param  {Number} startBlockNumber block number to start the import (inclusive)
- * @param  {Number} numBlocks        number of blocks to include in the batch
+ * @param  {Object} txImport         object containing information about the transactions to import
  * @return {Promise}                 Promise indicating succcess or failure
  */
-async function _batchImportBlocks(startBlockNumber, numBlocks) {
+async function _batchImportBlocks(startBlockNumber, txImport) {
   try {
     await redis.setAsync(BLOCK_NUMBER_KEY, startBlockNumber);
     // An array [0...numBlocks]
-    const offsets = Array.from(Array(numBlocks).keys());
-    await Promise.all(offsets.map( i => _importBlock(startBlockNumber + i)));
-    setTimeout( () => _batchImportBlocks(startBlockNumber + numBlocks, numBlocks), 1000);
+    const offsets = Array.from(Array(txImport.batchSize).keys());
+    await Promise.all(offsets.map( i => _importBlock(startBlockNumber + i, txImport)));
+
+    if (await txImport.stop(startBlockNumber + txImport.batchSize)) {
+      logger.info({
+        at: 'blockImporter#_batchImportBlocks',
+        message: 'Finished block import',
+        name: txImport.name,
+        blockNumber: startBlockNumber + txImport.batchSize
+      });
+      return;
+    }
+
+    setTimeout(
+      () => _batchImportBlocks(startBlockNumber + txImport.batchSize, txImport),
+      txImport.nextBatchTimeout
+    );
   } catch (e) {
     logger.error({
       at: 'blockImporter#_batchImportBlocks',
       message: 'Batch importing blocks failed',
       startBlockNumber: startBlockNumber,
-      error: e.toString()
+      error: e.toString(),
+      name: txImport.name
     });
     bugsnag.notify(e);
-    setTimeout( () => _batchImportBlocks(startBlockNumber, numBlocks), 1000);
+    setTimeout(
+      () => _batchImportBlocks(startBlockNumber, txImport), txImport.nextBatchTimeout
+    );
   }
 }
 
-async function _importBlock(blockNumber) {
+async function _importBlock(blockNumber, txImport) {
   try {
     const block = await web3.eth.getBlockAsync(blockNumber, true);
 
     if (block === null) {
-      return delay(5000).then(() => _importBlock(blockNumber));
+      return delay(5000).then(() => _importBlock(blockNumber, txImport));
     }
 
     logger.info({
@@ -81,9 +129,14 @@ async function _importBlock(blockNumber) {
       numTransactions: block.transactions.length
     });
 
+    const txs = block.transactions.filter(txImport.acceptFunc);
+
     await producerService.produce(
       producerService.queues.transaction,
-      block.transactions,
+      txs.map( tx => {
+        tx.doNotCount = txImport.doNotCount;
+        return tx;
+      }),
       tx => tx.hash
     );
   } catch (e) {
@@ -93,8 +146,8 @@ async function _importBlock(blockNumber) {
       blockNumber: blockNumber,
       error: e.toString()
     });
-    return delay(1000).then(() => _importBlock(blockNumber));
+    return delay(1000).then(() => _importBlock(blockNumber, txImport));
   }
 }
 
-module.exports.startImport = startImport;
+module.exports.initialize = initialize;

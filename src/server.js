@@ -13,7 +13,7 @@ const blockImporter = require('./services/blockImporter');
 const port = process.env.PORT;
 const app = express();
 
-blockImporter.startImport();
+blockImporter.initialize();
 app.listen(port, error => {
   if (error) {
     logger.error({
