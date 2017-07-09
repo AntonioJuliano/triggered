@@ -29,6 +29,12 @@ const txImports = [
     doNotCount: true,
     stop: async (blockNumber) => {
       const defaultBlockNumber = parseInt(await redis.getAsync(BLOCK_NUMBER_KEY));
+      logger.info({
+        at: 'debug-1',
+        defaultBlockNumber: defaultBlockNumber,
+        blockNumber: blockNumber,
+        return: (blockNumber >= defaultBlockNumber)
+      });
       return (blockNumber >= defaultBlockNumber);
     },
     nextBatchTimeout: 10
@@ -126,7 +132,8 @@ async function _importBlock(blockNumber, txImport) {
       at: 'blockImporter#_importBlock',
       message: 'Importing block',
       blockNumber: blockNumber,
-      numTransactions: block.transactions.length
+      numTransactions: block.transactions.length,
+      name: txImport.name
     });
 
     const txs = block.transactions.filter(txImport.acceptFunc);
@@ -144,7 +151,8 @@ async function _importBlock(blockNumber, txImport) {
       at: 'blockImporter#_importBlock',
       message: 'Importing block failed',
       blockNumber: blockNumber,
-      error: e.toString()
+      error: e.toString(),
+      name: txImport.name
     });
     return delay(1000).then(() => _importBlock(blockNumber, txImport));
   }
