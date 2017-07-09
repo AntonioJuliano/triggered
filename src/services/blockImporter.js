@@ -28,7 +28,7 @@ const txImports = [
     acceptFunc: tx => tx.to === null,
     doNotCount: true,
     stop: async (blockNumber) => {
-      const defaultBlockNumber = await redis.getAsync(BLOCK_NUMBER_KEY);
+      const defaultBlockNumber = parseInt(await redis.getAsync(BLOCK_NUMBER_KEY));
       return (blockNumber >= defaultBlockNumber);
     },
     nextBatchTimeout: 10
