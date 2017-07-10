@@ -114,7 +114,7 @@ async function _batchImportBlocks(startBlockNumber, txImport) {
   }
 }
 
-async function _importBlock(blockNumber, txImport) {
+async function _importBlock(blockNumber, txImport, retries) {
   try {
     const block = await web3.eth.getBlockAsync(blockNumber, true);
 
@@ -136,6 +136,7 @@ async function _importBlock(blockNumber, txImport) {
       producerService.queues.transaction,
       txs.map( tx => {
         tx.doNotCount = txImport.doNotCount;
+        tx.input = null; // For now we don't need this, and it's sometimes really big
         return tx;
       }),
       tx => tx.hash
@@ -148,7 +149,20 @@ async function _importBlock(blockNumber, txImport) {
       error: e.toString(),
       name: txImport.name
     });
-    return delay(1000).then(() => _importBlock(blockNumber, txImport));
+    if (!retries) {
+      retries = 0;
+    }
+    if (retries >= 3) {
+      logger.error({
+        at: 'blockImporter#_importBlock',
+        message: 'Importing block failed permanantly',
+        blockNumber: blockNumber,
+        error: e.toString(),
+        name: txImport.name
+      });
+      return;
+    }
+    return delay(1000).then(() => _importBlock(blockNumber, txImport, retries + 1));
   }
 }
 
