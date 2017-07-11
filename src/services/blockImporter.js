@@ -6,7 +6,7 @@ const delay = require('../helpers/delay');
 const bugsnag = require('../helpers/bugsnag');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
-const BACKFILL_BLOCK_NUMBER_KEY = 'triggered/backfill_block_number';
+const BACKFILL_BLOCK_NUMBER_KEY = 'triggered/backfill_block_number2';
 const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
 
 const txImports = [
