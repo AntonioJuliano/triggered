@@ -6,7 +6,6 @@ const delay = require('../helpers/delay');
 const bugsnag = require('../helpers/bugsnag');
 
 const BLOCK_NUMBER_KEY = 'triggered/block_number';
-const BACKFILL_BLOCK_NUMBER_KEY = 'triggered/backfill_block_number2';
 const IMPORT_BATCH_SIZE = parseInt(process.env.BLOCK_IMPORT_BATCH_SIZE);
 
 const txImports = [
@@ -19,19 +18,6 @@ const txImports = [
     doNotCount: false,
     stop: () => false,
     nextBatchTimeout: 1000
-  },
-  {
-    name: 'contract_creation_backfill',
-    blockNumberKey: BACKFILL_BLOCK_NUMBER_KEY,
-    defaultStartBlock: parseInt(process.env.BACKFILL_START_BLOCK, 10),
-    batchSize: IMPORT_BATCH_SIZE,
-    acceptFunc: tx => tx.to === null,
-    doNotCount: true,
-    stop: async (blockNumber) => {
-      const defaultBlockNumber = parseInt(await redis.getAsync(BLOCK_NUMBER_KEY));
-      return (blockNumber >= defaultBlockNumber);
-    },
-    nextBatchTimeout: 10
   }
 ]
 
